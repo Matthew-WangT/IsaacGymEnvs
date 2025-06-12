@@ -16,14 +16,14 @@ task:
     clipActions: 1.0
 
     # 奖励权重
-    reachReward: 5.0
-    effortReward: 0.01
+    reachReward: 2.0
+    effortReward: 0.005
     velocityReward: 0.001
-    successReward: 10.0
+    successReward: 50.0
 
     # 控制参数
     maxEffort: 50.0
-    targetRadius: 0.05
+    targetRadius: 0.1
     workspaceSize: 1.0
 
     asset:

@@ -255,6 +255,14 @@ class RRRobotReach(VecTask):
 
         self.reset_buf[env_ids] = 0
         self.progress_buf[env_ids] = 0
+        
+        # 重置距离跟踪
+        if hasattr(self, 'prev_dist_to_target'):
+            # 计算新的初始距离
+            self.gym.refresh_rigid_body_state_tensor(self.sim)
+            eef_pos = self.rigid_body_states[:, self.eef_index, 0:3]
+            new_dist = torch.norm(eef_pos - self.target_pos, dim=-1)
+            self.prev_dist_to_target[env_ids] = new_dist[env_ids]
 
     def pre_physics_step(self, actions):
         # actions包含两个关节的力矩
@@ -292,8 +300,22 @@ class RRRobotReach(VecTask):
       # 计算到目标位置的距离
       dist_to_target = torch.norm(eef_pos - self.target_pos, dim=-1)
       
-      # 基于距离的奖励
-      reach_reward = -dist_to_target
+      # 改进的奖励函数
+      # 1. 基于距离的奖励（使用指数衰减而不是线性）
+      reach_reward = torch.exp(-2.0 * dist_to_target)
+      
+      # 2. 成功到达奖励
+      success_reward = torch.where(dist_to_target < self.target_radius, 
+                                 torch.ones_like(dist_to_target), 
+                                 torch.zeros_like(dist_to_target))
+      
+      # 3. 距离改进奖励（鼓励朝目标移动）
+      if hasattr(self, 'prev_dist_to_target'):
+          dist_improvement = self.prev_dist_to_target - dist_to_target
+          improvement_reward = torch.clamp(dist_improvement * 10.0, -1.0, 1.0)
+      else:
+          improvement_reward = torch.zeros_like(dist_to_target)
+      self.prev_dist_to_target = dist_to_target.clone()
       
       # 惩罚过大的力矩
       effort_penalty = torch.sum(torch.square(self.efforts), dim=-1)
@@ -302,7 +324,9 @@ class RRRobotReach(VecTask):
       velocity_penalty = torch.sum(torch.square(self.dof_vel), dim=-1)
       
       # 总奖励
-      self.rew_buf = (self.reward_scales["reach"] * reach_reward - 
+      self.rew_buf = (self.reward_scales["reach"] * reach_reward + 
+                    self.reward_scales["success"] * success_reward +
+                    improvement_reward -
                     self.reward_scales["effort"] * effort_penalty - 
                     self.reward_scales["velocity"] * velocity_penalty)
 
@@ -310,6 +334,6 @@ class RRRobotReach(VecTask):
       self.reset_buf = torch.where(self.progress_buf >= self.max_episode_length - 1, 
                                 torch.ones_like(self.reset_buf), self.reset_buf)
       
-      # 如果到达目标位置，提前重置
-      self.reset_buf = torch.where(dist_to_target < 0.05,  # 设置一个合适的阈值
+      # 如果到达目标位置，提前重置（放宽阈值）
+      self.reset_buf = torch.where(dist_to_target < self.target_radius,  # 使用配置的半径
                                 torch.ones_like(self.reset_buf), self.reset_buf)
