@@ -1,0 +1,53 @@
+# @package _global_
+
+defaults:
+  - override /task: rr_robot
+
+task:
+  name: RRRobot
+  physics_engine: ${..physics_engine}
+  env:
+    numEnvs: ${resolve_default:512,${...num_envs}}
+    envSpacing: 4.0
+    episodeLength: 500
+    enableDebugVis: False
+
+    clipObservations: 5.0
+    clipActions: 1.0
+
+    # 奖励权重
+    uprightReward: 2.0
+    effortReward: 0.01
+    velocityReward: 0.001
+
+    # 控制参数
+    maxEffort: 50.0
+    resetDist: 1.0
+
+    asset:
+      assetRoot: "../../assets"
+      assetFileName: "urdf/rr_robot.urdf"
+
+  sim:
+    dt: 0.0166 # 1/60 s
+    substeps: 2
+    gravity: [0.0, 0.0, -9.81]
+    up_axis: "z"
+    use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
+    physx:
+      num_threads: ${....num_threads}
+      solver_type: ${....solver_type}
+      use_gpu: ${eq:${....sim_device},"gpu"} # set to False to run on CPU
+      num_position_iterations: 4
+      num_velocity_iterations: 0
+      contact_offset: 0.01
+      rest_offset: 0.0
+      bounce_threshold_velocity: 0.5
+      friction_offset_threshold: 0.04
+      friction_correlation_distance: 0.025
+      max_depenetration_velocity: 1.0
+      max_gpu_contact_pairs: 8388608 # 8*1024*1024
+      default_buffer_size_multiplier: 5
+      contact_collection: 2 # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
+
+task_name: ${task.name}
