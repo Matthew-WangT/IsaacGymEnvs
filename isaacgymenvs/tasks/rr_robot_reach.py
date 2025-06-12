@@ -32,6 +32,9 @@ class RRRobotReach(VecTask):
         self.cfg["env"]["numObservations"] = 10  # 2个关节位置 + 2个关节速度 + 3维度的末端位置(其中一个自由度不用) + 3维度的目标位置
         self.cfg["env"]["numActions"] = 2       # 2关节的力矩
 
+        # 在__init__方法中添加可视化控制
+        self.enable_target_vis = self.cfg["env"].get("enableTargetVis", False)  # 默认关闭
+
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
         
         # 初始化目标位置缓冲区
@@ -140,35 +143,36 @@ class RRRobotReach(VecTask):
 
             self.envs.append(env_ptr)
             self.rr_handles.append(rr_handle)
-        # Step 1: 创建一个小球资产（marker）
-        marker_radius = 0.01  # 直径较小用于标记
-        marker_options = gymapi.AssetOptions()
-        marker_options.fix_base_link = True
-        marker_asset = self.gym.create_sphere(self.sim, marker_radius, marker_options)
 
-        # 保存 marker 句柄
-        self.marker_handles = []
-        # Step 2: 在每个 env 中创建 marker actor
-        for i in range(self.num_envs):
-            env_ptr = self.envs[i]
+        # 只在启用可视化时创建marker
+        if self.enable_target_vis:
+            # Step 1: 创建一个小球资产（marker）
+            marker_radius = 0.01
+            marker_options = gymapi.AssetOptions()
+            marker_options.fix_base_link = True
+            marker_asset = self.gym.create_sphere(self.sim, marker_radius, marker_options)
 
-            # marker 初始位置（可随便设置）
-            marker_pose = gymapi.Transform()
-            marker_pose.p = gymapi.Vec3(0.0, 0.0, 0.5)
+            self.marker_handles = []
+            for i in range(self.num_envs):
+                env_ptr = self.envs[i]
+                marker_pose = gymapi.Transform()
+                marker_pose.p = gymapi.Vec3(0.0, 0.0, 0.5)
 
-            marker_handle = self.gym.create_actor(
-                env_ptr, marker_asset, marker_pose, "marker", 9999, 0, 0
-            )
+                marker_handle = self.gym.create_actor(
+                    env_ptr, marker_asset, marker_pose, "marker", 9999, 0, 0
+                )
 
-            # Step 3: 设置 marker 颜色（比如绿色）
-            self.gym.set_rigid_body_color(
-                env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.0, 1.0, 0.0)
-            )
+                self.gym.set_rigid_body_color(
+                    env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.0, 1.0, 0.0)
+                )
 
-            self.marker_handles.append(marker_handle)
+                self.marker_handles.append(marker_handle)
 
     def update_marker_positions(self):
-        """更新marker位置到目标位置"""
+        """更新marker位置到目标位置（仅在启用可视化时）"""
+        if not self.enable_target_vis:
+            return
+        
         # 刷新根状态张量
         self.gym.refresh_actor_root_state_tensor(self.sim)
         
@@ -241,6 +245,8 @@ class RRRobotReach(VecTask):
             (len(env_ids),1), 
             device=self.device
         ).squeeze(-1)
+        # set a same target position for all envs
+        # new_target_pos = torch.tensor([0.0, -0.5, 0.5], device=self.device).repeat(len(env_ids), 1)
         
         # 更新目标位置
         self.target_pos[env_ids] = new_target_pos
