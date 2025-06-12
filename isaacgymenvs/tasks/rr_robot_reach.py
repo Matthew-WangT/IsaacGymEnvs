@@ -140,6 +140,63 @@ class RRRobotReach(VecTask):
 
             self.envs.append(env_ptr)
             self.rr_handles.append(rr_handle)
+        # Step 1: 创建一个小球资产（marker）
+        marker_radius = 0.01  # 直径较小用于标记
+        marker_options = gymapi.AssetOptions()
+        marker_options.fix_base_link = True
+        marker_asset = self.gym.create_sphere(self.sim, marker_radius, marker_options)
+
+        # 保存 marker 句柄
+        self.marker_handles = []
+        # Step 2: 在每个 env 中创建 marker actor
+        for i in range(self.num_envs):
+            env_ptr = self.envs[i]
+
+            # marker 初始位置（可随便设置）
+            marker_pose = gymapi.Transform()
+            marker_pose.p = gymapi.Vec3(0.0, 0.0, 0.5)
+
+            marker_handle = self.gym.create_actor(
+                env_ptr, marker_asset, marker_pose, "marker", 9999, 0, 0
+            )
+
+            # Step 3: 设置 marker 颜色（比如绿色）
+            self.gym.set_rigid_body_color(
+                env_ptr, marker_handle, 0, gymapi.MESH_VISUAL, gymapi.Vec3(0.0, 1.0, 0.0)
+            )
+
+            self.marker_handles.append(marker_handle)
+
+    def update_marker_positions(self):
+        """更新marker位置到目标位置"""
+        # 刷新根状态张量
+        self.gym.refresh_actor_root_state_tensor(self.sim)
+        
+        # 每个环境有2个actor：机器人(索引0)和marker(索引1)
+        num_actors_per_env = 2
+        
+        # 为每个环境更新marker的根状态
+        for i in range(self.num_envs):
+            # 计算marker在全局根状态张量中的索引
+            marker_global_idx = i * num_actors_per_env + 1  # 每个环境的第二个actor是marker
+            
+            # 更新marker在根状态张量中的位置
+            self.root_states[marker_global_idx, 0:3] = self.target_pos[i]  # 位置(x,y,z)
+            self.root_states[marker_global_idx, 3:7] = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)  # 四元数(x,y,z,w)
+            self.root_states[marker_global_idx, 7:10] = 0.0   # 线速度
+            self.root_states[marker_global_idx, 10:13] = 0.0  # 角速度
+        
+        # 创建所有marker的全局索引
+        marker_indices = torch.arange(self.num_envs, device=self.device) * num_actors_per_env + 1
+        marker_indices = marker_indices.to(dtype=torch.int32)
+        
+        # 使用正确的API方法更新所有marker的位置
+        self.gym.set_actor_root_state_tensor_indexed(
+            self.sim,
+            gymtorch.unwrap_tensor(self.root_states),
+            gymtorch.unwrap_tensor(marker_indices),
+            len(marker_indices)
+        )
 
     def compute_observations(self):
         self.gym.refresh_dof_state_tensor(self.sim)
@@ -222,6 +279,7 @@ class RRRobotReach(VecTask):
 
         self.compute_observations()
         self.compute_reward()
+        self.update_marker_positions()
 
     # @torch.jit.script
     def compute_reward(self):
