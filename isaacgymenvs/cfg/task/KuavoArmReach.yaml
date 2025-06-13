@@ -1,0 +1,77 @@
+# Kuavo机械臂末端位置追踪任务配置
+name: KuavoArmReach
+
+physics_engine: ${..physics_engine}
+
+# 环境参数
+env:
+  numEnvs: ${resolve_default:512,${...num_envs}}
+  envSpacing: 1.5
+  episodeLength: 500
+  enableDebugVis: False
+  enableTargetVis: False
+  
+  clipObservations: 5.0
+  clipActions: 1.0
+  
+  # 机械臂参数
+  jointDamping: 0.5
+  jointFriction: 0.1
+  maxJointVel: 20.0
+  maxEffort: 100.0
+  
+  # 目标参数
+  targetRadius: 0.05
+  
+  # 奖励权重
+  reachReward: 1.0
+  effortReward: 0.001
+  velocityReward: 0.001
+  successReward: 5.0
+  orientationReward: 0.0
+  
+  # 控制参数
+  controlFrequencyInv: 2  # 控制频率的倒数，即每隔多少个物理步骤执行一次控制
+  
+  # 资产配置
+  asset:
+    assetFileName: "urdf/kuavo/urdf/kuavo_arm_simplified.urdf"
+
+  # 设置为True如果在环境中使用相机传感器
+  enableCameraSensors: False
+
+# 仿真参数
+sim:
+  dt: 0.0166 # 1/60 s
+  substeps: 2
+  up_axis: "z"
+  use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
+  gravity: [0.0, 0.0, -9.81]
+  physx:
+    num_threads: ${....num_threads}
+    solver_type: ${....solver_type}
+    use_gpu: ${contains:"cuda",${....sim_device}} # 设置为False在CPU上运行
+    num_position_iterations: 4
+    num_velocity_iterations: 1
+    contact_offset: 0.02
+    rest_offset: 0.0
+    bounce_threshold_velocity: 0.2
+    max_depenetration_velocity: 100.0
+    default_buffer_size_multiplier: 5.0
+    max_gpu_contact_pairs: 8388608 # 8*1024*1024
+    num_subscenes: ${....num_subscenes}
+    contact_collection: 1 # 0: CC_NEVER (不收集接触信息), 1: CC_LAST_SUBSTEP (仅在最后一个子步骤收集接触信息), 2: CC_ALL_SUBSTEPS (已损坏 - 不要使用!)
+
+# 任务参数
+task:
+  randomize: False
+  randomization_params:
+    frequency: 600   # 定义生成新随机化之间的环境步数
+    observations:
+      range: [0, .002] # 白噪声范围
+      operation: "additive"
+      distribution: "gaussian"
+    actions:
+      range: [0., .02]
+      operation: "additive"
+      distribution: "gaussian" 

@@ -59,6 +59,7 @@ from .industreal.industreal_task_gears_insert import IndustRealTaskGearsInsert
 from .rr_robot import RRRobot
 from .rr_robot_reach import RRRobotReach
 from .r3_robot_reach import R3RobotReach
+from .kuavo_arm_reach import KuavoArmReach
 
 def resolve_allegro_kuka(cfg, *args, **kwargs):
     subtask_name: str = cfg["env"]["subtask"]
@@ -117,4 +118,5 @@ isaacgym_task_map = {
     "RRRobot": RRRobot,
     "RRRobotReach": RRRobotReach,
     "R3RobotReach": R3RobotReach,
+    "KuavoArmReach": KuavoArmReach,
 }
