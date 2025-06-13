@@ -1,0 +1,62 @@
+# @package _global_
+
+defaults:
+  - override /task: r3_robot_reach
+
+task:
+  name: R3RobotReach
+  physics_engine: ${..physics_engine}
+  env:
+    numEnvs: ${resolve_default:4096,${...num_envs}}  # 充分利用4090D性能
+    envSpacing: 3.0  # 减少间距以节省内存
+    episodeLength: 800
+    enableDebugVis: False
+    enableTargetVis: False
+
+    clipObservations: 5.0
+    clipActions: 1.0
+
+    # 奖励权重 - 针对3DOF机械臂优化
+    reachReward: 3.0
+    effortReward: 0.002
+    velocityReward: 0.001
+    successReward: 100.0
+    orientationReward: 1.0  # 新增：末端姿态奖励
+
+    # 控制参数
+    maxEffort: 80.0  # 适应更大的力矩范围
+    targetRadius: 0.08  # 更严格的目标精度
+    workspaceSize: 1.5  # 更大的工作空间
+
+    # 机械臂特定参数
+    jointDamping: 0.1
+    jointFriction: 0.05
+    maxJointVel: 2.0
+
+    asset:
+      assetRoot: "../../assets"
+      assetFileName: "urdf/r3_robot.urdf"
+
+  sim:
+    dt: 0.0166 # 1/60 s
+    substeps: 2
+    gravity: [0.0, 0.0, -9.81]
+    up_axis: "z"
+    use_gpu_pipeline: ${eq:${...pipeline},"gpu"}
+    physx:
+      num_threads: ${....num_threads}
+      solver_type: ${....solver_type}
+      use_gpu: ${eq:${....sim_device},"gpu"} # set to False to run on CPU
+      num_position_iterations: 8  
+      num_velocity_iterations: 1
+      contact_offset: 0.005
+      rest_offset: 0.0
+      bounce_threshold_velocity: 0.2
+      friction_offset_threshold: 0.02
+      friction_correlation_distance: 0.015
+      max_depenetration_velocity: 0.5
+      max_gpu_contact_pairs: 33554432 # 4090D专用：32*1024*1024 增加4倍
+      default_buffer_size_multiplier: 8  # 4090D专用：增加缓冲区
+      contact_collection: 2
+
+task_name: ${task.name} 

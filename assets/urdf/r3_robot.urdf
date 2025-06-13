@@ -1,0 +1,161 @@
+<?xml version="1.0"?>
+<robot name="r3_robot">
+
+    <!-- 基座 -->
+    <link name="base_link">
+        <visual>
+            <geometry>
+                <cylinder radius="0.12" length="0.08"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <material name="base_mat">
+                <color rgba="0.2 0.2 0.2 1"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder radius="0.12" length="0.08"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+        </collision>
+        <inertial>
+            <mass value="5.0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <inertia ixx="0.15" ixy="0" ixz="0" iyy="0.15" iyz="0" izz="0.25"/>
+        </inertial>
+    </link>
+
+    <!-- 第一个连杆 (肩部) -->
+    <link name="link1">
+        <visual>
+            <geometry>
+                <box size="0.08 0.08 0.4"/>
+            </geometry>
+            <origin xyz="0 0 0.2" rpy="0 0 0"/>
+            <material name="link1_mat">
+                <color rgba="0.8 0.3 0.3 1"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.08 0.08 0.4"/>
+            </geometry>
+            <origin xyz="0 0 0.2" rpy="0 0 0"/>
+        </collision>
+        <inertial>
+            <mass value="3.0"/>
+            <origin xyz="0 0 0.2" rpy="0 0 0"/>
+            <inertia ixx="0.043" ixy="0" ixz="0" iyy="0.043" iyz="0" izz="0.006"/>
+        </inertial>
+    </link>
+
+    <!-- 第二个连杆 (上臂) -->
+    <link name="link2">
+        <visual>
+            <geometry>
+                <box size="0.06 0.06 0.35"/>
+            </geometry>
+            <origin xyz="0 0 0.175" rpy="0 0 0"/>
+            <material name="link2_mat">
+                <color rgba="0.3 0.8 0.3 1"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.06 0.06 0.35"/>
+            </geometry>
+            <origin xyz="0 0 0.175" rpy="0 0 0"/>
+        </collision>
+        <inertial>
+            <mass value="2.5"/>
+            <origin xyz="0 0 0.175" rpy="0 0 0"/>
+            <inertia ixx="0.028" ixy="0" ixz="0" iyy="0.028" iyz="0" izz="0.004"/>
+        </inertial>
+    </link>
+
+    <!-- 第三个连杆 (前臂) -->
+    <link name="link3">
+        <visual>
+            <geometry>
+                <box size="0.05 0.05 0.3"/>
+            </geometry>
+            <origin xyz="0 0 0.15" rpy="0 0 0"/>
+            <material name="link3_mat">
+                <color rgba="0.3 0.3 0.8 1"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.05 0.05 0.3"/>
+            </geometry>
+            <origin xyz="0 0 0.15" rpy="0 0 0"/>
+        </collision>
+        <inertial>
+            <mass value="1.5"/>
+            <origin xyz="0 0 0.15" rpy="0 0 0"/>
+            <inertia ixx="0.013" ixy="0" ixz="0" iyy="0.013" iyz="0" izz="0.002"/>
+        </inertial>
+    </link>
+
+    <!-- 末端执行器 -->
+    <link name="eef">
+        <visual>
+            <geometry>
+                <sphere radius="0.025"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <material name="eef_mat">
+                <color rgba="1 0.5 0 1"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="0.025"/>
+            </geometry>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+        </collision>
+        <inertial>
+            <mass value="0.2"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <inertia ixx="0.0005" ixy="0" ixz="0" iyy="0.0005" iyz="0" izz="0.0005"/>
+        </inertial>
+    </link>
+
+    <!-- 关节1: 基座旋转 (绕Z轴) -->
+    <joint name="joint1" type="revolute">
+        <parent link="base_link"/>
+        <child link="link1"/>
+        <origin xyz="0 0 0.04" rpy="0 0 0"/>
+        <axis xyz="0 0 1"/>
+        <limit lower="-3.14159" upper="3.14159" effort="150.0" velocity="2.0"/>
+        <dynamics damping="0.5" friction="0.1"/>
+    </joint>
+
+    <!-- 关节2: 肩部俯仰 (绕Y轴) -->
+    <joint name="joint2" type="revolute">
+        <parent link="link1"/>
+        <child link="link2"/>
+        <origin xyz="0 0 0.4" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="-1.57" upper="1.57" effort="120.0" velocity="2.0"/>
+        <dynamics damping="0.4" friction="0.08"/>
+    </joint>
+
+    <!-- 关节3: 肘部俯仰 (绕Y轴) -->
+    <joint name="joint3" type="revolute">
+        <parent link="link2"/>
+        <child link="link3"/>
+        <origin xyz="0 0 0.35" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+        <limit lower="-2.094" upper="2.094" effort="80.0" velocity="2.5"/>
+        <dynamics damping="0.3" friction="0.05"/>
+    </joint>
+
+    <!-- 末端执行器固定连接 -->
+    <joint name="eef_joint" type="fixed">
+        <parent link="link3"/>
+        <child link="eef"/>
+        <origin xyz="0 0 0.3" rpy="0 0 0"/>
+    </joint>
+
+</robot> 
